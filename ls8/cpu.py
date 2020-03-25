@@ -3,10 +3,12 @@
 import sys
 
 op_codes = {
-    'HLT': 0b00000001,
-    'LDI': 0b10000010,
-    'PRN': 0b01000111,
-    'MUL': 0b10100010,
+    'HLT':  0b00000001,
+    'LDI':  0b10000010,
+    'PRN':  0b01000111,
+    'MUL':  0b10100010,
+    'PUSH': 0b01000101,
+    'POP':  0b01000110,
 }
 
 class CPU:
@@ -15,6 +17,7 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         self.pc = 0
+        self.sp = 7
         self.reg = [0] * 8
         self.ram = [0] * 256 
     def ram_read(self, address):
@@ -25,7 +28,7 @@ class CPU:
 
     def load(self, filename):
         """Load a program into memory."""
-
+        self.ram = [0] * 256
         try:
             with open(filename) as f:
                 program = []
@@ -69,8 +72,6 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
-            #self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
             self.ram_read(self.pc + 2)
@@ -83,14 +84,15 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
+        self.reg = [0] * 8
+        self.reg[self.sp] = 0xf3
+
         while True:
             IR = self.ram[self.pc]
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
             if IR == op_codes['HLT']:
-                self.ram = [] * 256
-                self.reg = [0] * 8
                 sys.exit()
                 break
             
@@ -105,6 +107,20 @@ class CPU:
             elif IR == op_codes['MUL']:
                 self.alu('MUL', operand_a, operand_b)
                 self.pc += 3
+
+            elif IR == op_codes['PUSH']:
+
+                self.reg[self.sp] -= 1
+                self.ram[self.reg[self.sp]] = self.reg[operand_a]
+                self.pc += 2
+
+
+            elif IR == op_codes['POP']:
+                memory = self.ram[self.reg[self.sp]]
+                self.reg[operand_a] = memory
+                self.reg[self.sp] += 1
+                self.pc += 2
+
             else:
                 print(f'Unknown instruction: {IR}')
                 sys.exit(1)
