@@ -6,9 +6,14 @@ op_codes = {
     'HLT':  0b00000001,
     'LDI':  0b10000010,
     'PRN':  0b01000111,
-    'MUL':  0b10100010,
     'PUSH': 0b01000101,
     'POP':  0b01000110,
+    'CALL': 0b01010000,
+    'RET':  0b00010001,
+
+    # alu opcodes
+    "ADD":  0b10100000,
+    'MUL':  0b10100010,
 }
 
 class CPU:
@@ -89,6 +94,7 @@ class CPU:
 
         while True:
             IR = self.ram[self.pc]
+
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
@@ -107,6 +113,9 @@ class CPU:
             elif IR == op_codes['MUL']:
                 self.alu('MUL', operand_a, operand_b)
                 self.pc += 3
+            elif IR == op_codes['ADD']:
+                self.alu('ADD', operand_a, operand_b)
+                self.pc += 3
 
             elif IR == op_codes['PUSH']:
 
@@ -120,6 +129,20 @@ class CPU:
                 self.reg[operand_a] = memory
                 self.reg[self.sp] += 1
                 self.pc += 2
+            
+            elif IR == op_codes['CALL']:
+                # The address of the ***instruction*** _directly after_ `CALL` is
+                # pushed onto the stack.
+                self.reg[self.sp] -= 1
+                self.ram[self.reg[self.sp]] = self.pc + 2
+                # The PC is set to the address stored in the given register.
+                self.pc = self.reg[operand_a]
+
+                # We jump to that location in RAM and execute the first instruction in the subroutine.
+                # The PC can move forward or backwards from its current location.
+            elif IR == op_codes['RET']:
+                self.pc = self.ram[self.reg[self.sp]]
+                self.reg[self.sp] += 1
 
             else:
                 print(f'Unknown instruction: {IR}')
