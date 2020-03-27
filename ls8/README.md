@@ -60,7 +60,14 @@ but you'll have to implement those three above instructions first!
 ## Step 0: IMPORTANT: inventory what is here!
 
 * Make a list of files here.
+cpu.py
+ls8.py
+
 * Write a short 3-10-word description of what each file does.
+cpu is a class constructor for building the operations of a cpu
+
+ls8.py is a file that runs the cpu with programs/operations loaded into it
+
 * Note what has been implemented, and what hasn't.
 * Read this whole file.
 * Skim the spec.
