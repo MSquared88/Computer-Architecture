@@ -9,6 +9,12 @@ PUSH = 0b01000101
 POP =  0b01000110
 CALL = 0b01010000
 RET =  0b00010001
+CMP =  0b10100111
+JMP =  0b01010100
+
+JEQ =  0b01010101
+JNE =  0b01010110
+
 
 # alu opcodes
 ADD =  0b10100000
@@ -20,8 +26,12 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
+        # internal registers
         self.pc = 0
         self.sp = 7
+        self.FL = 0b00000000
+
+        #memory
         self.reg = [0] * 8
         self.ram = [0] * 256 
 
@@ -33,11 +43,9 @@ class CPU:
         self.branchtable[POP] = self.handle_POP
         self.branchtable[CALL] = self.handle_CALL
         self.branchtable[RET] = self.handle_RET
-
-
-        #alu 
-        self.branchtable[ADD] = self.handle_LDI
-        self.branchtable[MUL] = self.handle_LDI
+        self.branchtable[JMP] = self.handle_JMP
+        self.branchtable[JEQ] = self.handle_JEQ
+        self.branchtable[JNE] = self.handle_JNE
 
 
     def ram_read(self, address):
@@ -69,7 +77,7 @@ class CPU:
             sys.exit(2)
         address = 0
         for instruction in program:
-            self.ram[address] = instruction
+            self.ram_write(address,instruction)
             address += 1
 
     def alu(self, op, reg_a, reg_b):
@@ -80,7 +88,19 @@ class CPU:
 
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        
+        elif op == "CMP":
 
+            if self.reg[reg_a] < self.reg[reg_b]:
+                self.FL = 0b00000100
+
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.FL = 0b00000010
+
+            elif self.reg[reg_a] == self.reg[reg_b]:
+                self.FL = 0b00000001
+
+        
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -134,6 +154,26 @@ class CPU:
         self.pc = self.ram[self.reg[self.sp]]
         self.reg[self.sp] += 1
 
+    def handle_JMP(self, a=None, b=None):
+        self.pc = self.reg[a]
+
+    def handle_JNE(self, a=None, b=None):
+        # If `E` flag is clear (false, 0), 
+        # jump to the address stored in the given register.
+
+        if self.FL & 0b00000001 == 0:
+            self.pc = self.reg[a]
+        else: 
+            self.pc += 2
+
+    def handle_JEQ(self, a=None, b=None):
+        # If `equal` flag is set (true), 
+        # jump to the address stored in the given register.
+        if self.FL & 0b00000001 == 1:
+            self.pc = self.reg[a]
+        else: 
+            self.pc += 2
+
     def run(self):
         """Run the CPU."""
         self.reg = [0] * 8
@@ -142,22 +182,30 @@ class CPU:
 
         while True:
             IR = self.ram[self.pc]
-            if IR == HLT:
-                sys.exit()
-                break
-            elif IR not in self.branchtable:
-                print(f'Unknown instruction: {IR}')
-                sys.exit(1)
 
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            if IR == MUL:
+            if IR == HLT:
+                sys.exit()
+                break
+            elif IR == MUL:
                 self.alu('MUL', operand_a, operand_b)
                 self.pc += 3
+                
             elif IR == ADD:
                 self.alu('ADD', operand_a, operand_b)
                 self.pc += 3
+
+            elif IR == CMP:
+                self.alu('CMP', operand_a, operand_b)
+                self.pc += 3
+
+            elif IR not in self.branchtable:
+                print(f'Unknown instruction: {IR}')
+                sys.exit(1)
+
+
 
             else:
                 self.branchtable[IR](operand_a, operand_b)
