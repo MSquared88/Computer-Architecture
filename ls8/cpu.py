@@ -9,7 +9,7 @@ PUSH = 0b01000101
 POP =  0b01000110
 CALL = 0b01010000
 RET =  0b00010001
-CMP =  0b10100111
+
 JMP =  0b01010100
 
 JEQ =  0b01010101
@@ -17,8 +17,17 @@ JNE =  0b01010110
 
 
 # alu opcodes
-ADD =  0b10100000
-MUL =  0b10100010
+alu_codes = {
+    0b10100000: 'ADD',
+    0b10100010: 'MUL',
+    0B10101000: 'AND',
+    0B01101001: 'NOT',
+    0B10101010: 'OR',
+    0B10101011: 'XOR',
+    0B10101100: 'SHL',
+    0B10101101: 'SHR',
+    0b10100111: 'CMP'
+}
 
 
 class CPU:
@@ -82,25 +91,47 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-
+        value_a = self.reg[reg_a]
+        value_b = self.reg[reg_b]
+        
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+            self.reg[reg_a] = (value_a + value_b)
 
         elif op == "MUL":
-            self.reg[reg_a] *= self.reg[reg_b]
+            self.reg[reg_a] = (value_a * value_b)
+
+        elif op == 'AND':
+            self.reg[reg_a] = (value_a & value_b)
+
+        elif op == 'OR':
+            self.reg[reg_a] = (value_a | value_b)
+
+        elif op == 'XOR':
+            self.reg[reg_a] = (value_a ^ value_b)
+
+        elif op == 'NOT':
+            self.reg[reg_a] = ~value_a
+
+        elif op == 'SHL':
+            self.reg[reg_a] = (value_a << value_b)
+
+        elif op == 'SHR':
+            self.reg[reg_a] = (value_a >> value_b)
+            
+        elif op == 'MOD':
+            self.reg[reg_a] = (value_a % value_b)
         
         elif op == "CMP":
 
-            if self.reg[reg_a] < self.reg[reg_b]:
+            if value_a < value_b:
                 self.FL = 0b00000100
 
-            elif self.reg[reg_a] > self.reg[reg_b]:
+            elif value_a > value_b:
                 self.FL = 0b00000010
 
-            elif self.reg[reg_a] == self.reg[reg_b]:
+            elif value_a == value_b:
                 self.FL = 0b00000001
 
-        
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -189,23 +220,13 @@ class CPU:
             if IR == HLT:
                 sys.exit()
                 break
-            elif IR == MUL:
-                self.alu('MUL', operand_a, operand_b)
-                self.pc += 3
-                
-            elif IR == ADD:
-                self.alu('ADD', operand_a, operand_b)
+            elif IR in alu_codes:
+                self.alu(alu_codes[IR], operand_a, operand_b)
                 self.pc += 3
 
-            elif IR == CMP:
-                self.alu('CMP', operand_a, operand_b)
-                self.pc += 3
-
-            elif IR not in self.branchtable:
-                print(f'Unknown instruction: {IR}')
-                sys.exit(1)
-
-
+            elif IR in self.branchtable:
+                self.branchtable[IR](operand_a, operand_b)
 
             else:
-                self.branchtable[IR](operand_a, operand_b)
+                print(f'Unknown instruction: {IR}')
+                sys.exit(1)
